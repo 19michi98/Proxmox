@@ -34,9 +34,10 @@ $STD apt-get install -y php8.2-mbstring
 msg_ok "Installed PHP8.2"
 
 msg_info "Installing grocy"
-latest=$(curl -s https://api.github.com/repos/grocy/grocy/releases/latest | grep "tag_name" | awk '{print substr($2, 3, length($2)-4) }')
-wget -q https://github.com/grocy/grocy/releases/download/v${latest}/grocy_${latest}.zip
-$STD unzip grocy_${latest}.zip -d /var/www/html
+# Definiere die feste Version
+grocy_version="4.1.0"
+wget -q https://github.com/grocy/grocy/releases/download/v${grocy_version}/grocy_${grocy_version}.zip
+$STD unzip grocy_${grocy_version}.zip -d /var/www/html
 chown -R www-data:www-data /var/www/html
 cp /var/www/html/config-dist.php /var/www/html/data/config.php
 chmod +x /var/www/html/update.sh
@@ -46,26 +47,3 @@ cat <<EOF >/etc/apache2/sites-available/grocy.conf
   ServerAdmin webmaster@localhost
   DocumentRoot /var/www/html/public
   ErrorLog /var/log/apache2/error.log
-<Directory /var/www/html/public>
-  Options Indexes FollowSymLinks MultiViews
-  AllowOverride All
-  Order allow,deny
-  allow from all
-</Directory>
-</VirtualHost>
-EOF
-
-$STD a2dissite 000-default.conf
-$STD a2ensite grocy.conf
-$STD a2enmod rewrite
-systemctl reload apache2
-msg_ok "Installed grocy"
-
-motd_ssh
-customize
-
-msg_info "Cleaning up"
-$STD apt-get autoremove
-$STD apt-get autoclean
-rm -rf /root/grocy_${latest}.zip
-msg_ok "Cleaned"
