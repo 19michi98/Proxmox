@@ -1,49 +1,74 @@
 #!/usr/bin/env bash
-
+source <(curl -s https://raw.githubusercontent.com/tteck/Proxmox/main/misc/build.func)
 # Copyright (c) 2021-2024 tteck
 # Author: tteck (tteckster)
 # License: MIT
 # https://github.com/tteck/Proxmox/raw/main/LICENSE
 
-source /dev/stdin <<< "$FUNCTIONS_FILE_PATH"
+function header_info {
+clear
+cat <<"EOF"
+   ____ __________  _______  __
+  / __  / ___/ __ \/ ___/ / / /
+ / /_/ / /  / /_/ / /__/ /_/ / 
+ \__, /_/   \____/\___/\__, /  
+/____/                /____/   
+ 
+EOF
+}
+header_info
+echo -e "Loading..."
+APP="grocy"
+var_disk="2"
+var_cpu="1"
+var_ram="512"
+var_os="debian"
+var_version="12"
+variables
 color
-verb_ip6
 catch_errors
-setting_up_container
-network_check
-update_os
 
-msg_info "Installing Dependencies"
-$STD apt-get install -y curl
-$STD apt-get install -y sudo
-$STD apt-get install -y mc
-$STD apt-get install -y apt-transport-https
-msg_ok "Installed Dependencies"
+function default_settings() {
+  CT_TYPE="1"
+  PW=""
+  CT_ID=$NEXTID
+  HN=$NSAPP
+  DISK_SIZE="$var_disk"
+  CORE_COUNT="$var_cpu"
+  RAM_SIZE="$var_ram"
+  BRG="vmbr0"
+  NET="dhcp"
+  GATE=""
+  APT_CACHER=""
+  APT_CACHER_IP=""
+  DISABLEIP6="no"
+  MTU=""
+  SD=""
+  NS=""
+  MAC=""
+  VLAN=""
+  SSH="no"
+  VERB="no"
+  echo_default
+}
 
-msg_info "Installing PHP8.2"
-VERSION="$(awk -F'=' '/^VERSION_CODENAME=/{ print $NF }' /etc/os-release)"
-curl -sSLo /usr/share/keyrings/deb.sury.org-php.gpg https://packages.sury.org/php/apt.gpg
-echo -e "deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ $VERSION main" >/etc/apt/sources.list.d/php.list
-$STD apt-get update
-$STD apt-get install -y php8.2
-$STD apt-get install -y libapache2-mod-php8.2
-$STD apt-get install -y php8.2-sqlite3
-$STD apt-get install -y php8.2-gd
-$STD apt-get install -y php8.2-intl
-$STD apt-get install -y php8.2-mbstring
-msg_ok "Installed PHP8.2"
+function install_grocy() {
+  header_info
+  msg_info "Downloading and installing ${APP} 4.1.0"
+  wget https://github.com/grocy/grocy/releases/download/v4.1.0/grocy_4.1.0.zip -O grocy.zip
+  unzip grocy.zip -d /var/www/html/grocy
+  chown -R www-data:www-data /var/www/html/grocy
+  rm grocy.zip
+  msg_ok "${APP} installed"
+}
 
-msg_info "Installing grocy"
-# Definiere die feste Version
-grocy_version="4.1.0"
-wget -q https://github.com/grocy/grocy/releases/download/v${grocy_version}/grocy_${grocy_version}.zip
-$STD unzip grocy_${grocy_version}.zip -d /var/www/html
-chown -R www-data:www-data /var/www/html
-cp /var/www/html/config-dist.php /var/www/html/data/config.php
-chmod +x /var/www/html/update.sh
+function start() {
+  default_settings
+  build_container
+  install_grocy
+  description
+  msg_ok "Completed Successfully!\n"
+  echo -e "${APP} should be reachable by going to the following URL.\n${BL}http://${IP}${CL} \n"
+}
 
-cat <<EOF >/etc/apache2/sites-available/grocy.conf
-<VirtualHost *:80>
-  ServerAdmin webmaster@localhost
-  DocumentRoot /var/www/html/public
-  ErrorLog /var/log/apache2/error.log
+start
